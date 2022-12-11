@@ -32,7 +32,7 @@ export const Login = () => {
       initialValues={{ remember: true }}
       onFinish={onFinish}
       autoComplete="off"
-      style={{ marginTop: "4rem" }}
+      className="mt-16"
     >
       <Row justify="center" align="middle">
         <Col span={14}>

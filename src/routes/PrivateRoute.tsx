@@ -1,12 +1,13 @@
 import { ProtectedLayout } from "../components/ProtectedLayout";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { DashboardOutlined } from "@ant-design/icons";
+import { ChatMessage } from "../pages/ChatMessage";
 
 export interface Route {
   path: string;
   label: string;
   element: React.ReactNode;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   hidden?: boolean;
   key: string;
 }
@@ -17,6 +18,11 @@ const routes: Route[] = [
     label: "Dashboard",
     element: <div>123</div>,
     icon: <DashboardOutlined />,
+  },
+  {
+    path: "message/:id",
+    label: "Message",
+    element: <ChatMessage />,
   },
 ].map((route, index) => ({ ...route, key: String(index) }));
 
