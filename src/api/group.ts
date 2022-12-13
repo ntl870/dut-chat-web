@@ -47,3 +47,11 @@ export const getGroups = (
     params: pagination,
   });
 };
+
+export const createGroup = (body: { name: string; description: string }) => {
+  return axiosClient.post("/groups", body);
+};
+
+export const getGroupByID = (id: string) => {
+  return axiosClient.get(`/groups/${id}`);
+};

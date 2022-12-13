@@ -1,5 +1,5 @@
-import { useMutation, useInfiniteQuery } from "@tanstack/react-query";
-import { Avatar, Input, Skeleton } from "antd";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Avatar, Input, Skeleton, Spin } from "antd";
 import { getGroupMessage, GroupMessage } from "../api/message";
 import { useRouter } from "../hooks/useRouter";
 import styled from "styled-components";
@@ -9,16 +9,15 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { socket } from "../utils";
 import uniqBy from "lodash/uniqBy";
-import { getStorage } from "../utils";
+import { getGroupByID } from "../api/group";
 
-const Wrapper = styled.div<{ padding: number }>`
+const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  justify-content: space-between;
-  padding-bottom: ${(p) => {
-    return p.children[0].props.padding;
-  }}px;
+  height: 100%;
+  justify-content: flex-end;
+  padding-bottom: 60px;
 `;
 
 const Message = styled.div`
@@ -37,45 +36,43 @@ export const ChatMessage = () => {
   const { userInfo } = useCurrentUser();
   const [currentMessage, setCurrentMessage] = useState("");
   const [currentChat, setCurrentChat] = useState<GroupMessage[] | []>([]);
+  const [page, setPage] = useState(1);
   const inputRef = useRef<any>(null);
 
-  const { data, fetchNextPage } = useInfiniteQuery({
+  const { data: groupInfo } = useQuery({
     queryKey: ["group", params.id],
+    queryFn: () => getGroupByID(params?.id || ""),
+    enabled: !!params.id,
+    select: ({ data }) => data?.result,
+  });
+
+  const { data, refetch } = useQuery({
+    queryKey: ["group", params.id, page],
     cacheTime: 0,
-    queryFn: ({ pageParam = 1 }) => {
-      return getGroupMessage({
+    queryFn: () =>
+      getGroupMessage({
         groupId: params.id || "",
         pagination: {
-          page: pageParam,
+          page: page,
           limit: 20,
         },
-      });
+      }),
+    onSuccess: ({ data }) => {
+      setCurrentChat((prev) => [
+        ...prev,
+        ...data.result.data.map((item) => item),
+      ]);
     },
-    getNextPageParam: (lastPage) => {
-      const totalPage = Math.ceil(lastPage.data.result.total / 20);
-      if (lastPage.data.result.currentPage === totalPage)
-        return lastPage.data.result.currentPage;
-
-      return lastPage.data.result.currentPage + 1;
-    },
-    getPreviousPageParam: (firstPage) =>
-      firstPage.data.result.currentPage - 1 ?? undefined,
     refetchOnWindowFocus: false,
     keepPreviousData: true,
   });
 
-  useEffect(() => {
-    setCurrentChat([]);
-  }, [params.id]);
+  const totalPage = Math.ceil(Number(data?.data.result.total) / 20);
 
   useEffect(() => {
-    if (data?.pages.length) {
-      setCurrentChat((prev) => [
-        ...prev,
-        ...data.pages.map((item) => item.data.result.data).flat(),
-      ]);
-    }
-  }, [data?.pages.length]);
+    setCurrentChat([]);
+    setPage(1);
+  }, [params.id]);
 
   const sendMessage = useMutation({
     mutationKey: ["message", params.id],
@@ -92,15 +89,14 @@ export const ChatMessage = () => {
       content,
     });
   };
-
   useEffect(() => {
-    socket.on("connect", () => {
-      console.log("connect");
-    });
     socket.on("messages", (data) => {
-      console.log("d", data);
-      if (data.message.sender !== userInfo?._id)
-        setCurrentChat((prev) => [data.message, ...prev]);
+      if (data.message.sender !== userInfo?._id) {
+        const sender = groupInfo?.members.find(
+          (item) => item.user._id === data.message.sender
+        ).user;
+        setCurrentChat((prev) => [{ ...data.message, sender }, ...prev]);
+      }
     });
 
     return () => {
@@ -111,11 +107,12 @@ export const ChatMessage = () => {
 
   const renderItem = (message) => {
     const isSender =
-      message.sender._id === userInfo._id || message.sender === userInfo._id;
+      message.sender?._id === userInfo?._id ||
+      message?.sender === userInfo?._id;
     return (
       <div className="flex flex-col mb-2" key={message._id}>
         <span className={`ml-4 ${isSender ? "text-right" : "text-left"}`}>
-          {isSender ? userInfo.name : message.sender.name}
+          {isSender ? userInfo?.name : message?.sender?.name}
         </span>
         <div
           className={`flex flex-row ${
@@ -123,33 +120,35 @@ export const ChatMessage = () => {
           }`}
         >
           <div className="flex flex-col justify-end ml-2">
-            <Avatar src={message.sender.avatar} size="default" />
+            <Avatar
+              src={!isSender ? message.sender?.avatar : userInfo?.avatar}
+              size="default"
+            />
           </div>
           <Message key={message._id}>{message.content}</Message>
         </div>
       </div>
     );
   };
+
   return (
     <Wrapper>
-      {/* <MessageSection padding={60}> */}
       <InfiniteScroll
-        next={fetchNextPage}
-        scrollThreshold={0.5}
-        hasMore
-        loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
-        dataLength={uniqBy(currentChat, "_id").length}
-        endMessage={<div>end</div>}
-        style={{
-          display: "flex",
-          flexDirection: "column-reverse",
-          paddingBottom: 60,
+        next={() => {
+          if (page < totalPage) {
+            setPage((page) => page + 1);
+            refetch();
+          }
         }}
+        scrollThreshold={0.5}
+        hasMore={totalPage !== 1 && page < totalPage}
+        loader={<Skeleton paragraph={{ rows: 1 }} active />}
+        dataLength={uniqBy(currentChat, "_id").length}
+        className="flex flex-col-reverse"
         inverse
       >
         {uniqBy(currentChat, "_id").map((item) => renderItem(item))}
       </InfiniteScroll>
-      {/* </MessageSection> */}
       <div ref={inputRef} className="fixed bottom-0 w-full">
         <Input.TextArea
           autoSize={{

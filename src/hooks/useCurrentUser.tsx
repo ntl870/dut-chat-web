@@ -9,11 +9,14 @@ interface IUser {
   phone: string;
 }
 
-export default function useCurrentUser(): { userInfo: IUser } {
-  const { data } = useQuery(["user"], getUser, {
+export default function useCurrentUser(): {
+  userInfo: IUser;
+  refetchUser: () => void;
+} {
+  const { refetch, data } = useQuery(["user"], getUser, {
     cacheTime: Infinity,
     refetchOnWindowFocus: true,
   });
 
-  return { userInfo: data?.data?.result };
+  return { userInfo: data?.data?.result, refetchUser: refetch };
 }

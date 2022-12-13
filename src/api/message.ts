@@ -5,6 +5,7 @@ import { Pagination } from "antd";
 export interface Pagination {
   limit: number;
   page: number;
+  keyword?: string;
 }
 
 export interface GroupMessage {
