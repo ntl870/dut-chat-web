@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Avatar, Input, Skeleton, Spin, Typography } from "antd";
+import { Avatar, Input, Modal, Skeleton, Spin, Typography } from "antd";
 import { getGroupMessage, GroupMessage } from "../api/message";
 import { useRouter } from "../hooks/useRouter";
 import styled from "styled-components";
@@ -9,7 +9,9 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { socket } from "../utils";
 import uniqBy from "lodash/uniqBy";
-import { getGroupByID } from "../api/group";
+import { getGroupByID, approveJoinRequest } from "../api/group";
+import { CheckOutlined, SettingOutlined } from "@ant-design/icons";
+import GroupModal from "../components/GroupDetailModel";
 
 const Wrapper = styled.div`
   display: flex;
@@ -41,6 +43,9 @@ export const ChatMessage = () => {
   const { userInfo } = useCurrentUser();
   const [currentMessage, setCurrentMessage] = useState("");
   const [currentChat, setCurrentChat] = useState<GroupMessage[] | []>([]);
+  const [groupModelVisible, setGroupModelVisible] = useState(true);
+  const [visibleMembersGroup, setVisibleMembersGroup] = useState(false);
+  const [visibleJoinRequest, setVisibleJoinRequest] = useState(false);
   const [page, setPage] = useState(1);
   const inputRef = useRef<any>(null);
 
@@ -169,14 +174,50 @@ export const ChatMessage = () => {
   return (
     <Wrapper>
       <div
-        className="w-full fixed top-0 h-10 z-50"
+        // className="w-full fixed top-0 h-10 z-50"
         style={{
           backgroundColor: "#242526",
+          borderBottom: "1px solid #3E4042",
+          flexDirection: "row",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <Typography.Title level={2} className="text-white">
-          {groupInfo?.name}
-        </Typography.Title>
+        <div
+          style={{
+            flexDirection: "row",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <Avatar src={groupInfo.image} size="large" />
+          <Typography.Title
+            level={2}
+            className="text-white"
+            style={{
+              marginLeft: "1rem",
+              margin: 10,
+            }}
+          >
+            {groupInfo?.name}
+          </Typography.Title>
+        </div>
+        <button
+          style={{
+            textAlign: "right",
+            alignItems: "flex-end",
+            backgroundColor: "#3E4042",
+          }}
+          onClick={() => setGroupModelVisible(true)}
+        >
+          <SettingOutlined
+            style={{
+              color: "white",
+              borderRadius: "100%",
+            }}
+          />
+        </button>
       </div>
       <InfiniteScroll
         next={() => {
@@ -224,6 +265,7 @@ export const ChatMessage = () => {
           placeholder="Text"
         />
       </div>
+      {groupModelVisible && <GroupModal groupId={groupInfo._id} />}
     </Wrapper>
   );
 };

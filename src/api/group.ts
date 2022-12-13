@@ -55,3 +55,13 @@ export const createGroup = (body: { name: string; description: string }) => {
 export const getGroupByID = (id: string) => {
   return axiosClient.get(`/groups/${id}`);
 };
+
+export const approveJoinRequest = ({
+  groupId,
+  requesterId,
+}: {
+  groupId: string;
+  requesterId: string;
+}) => {
+  return axiosClient.post(`/groups/${groupId}/join-requests/${requesterId}`);
+};
