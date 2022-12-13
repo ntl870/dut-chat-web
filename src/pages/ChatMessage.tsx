@@ -1,30 +1,24 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Avatar, Input } from "antd";
+import { useMutation, useInfiniteQuery } from "@tanstack/react-query";
+import { Avatar, Input, Skeleton } from "antd";
 import { getGroupMessage, GroupMessage } from "../api/message";
 import { useRouter } from "../hooks/useRouter";
 import styled from "styled-components";
 import { sendGroupMessage } from "../api/message";
 import { useEffect, useRef, useState } from "react";
 import useCurrentUser from "../hooks/useCurrentUser";
+import InfiniteScroll from "react-infinite-scroll-component";
 import { socket } from "../utils";
+import uniqBy from "lodash/uniqBy";
+import { getStorage } from "../utils";
+
 const Wrapper = styled.div<{ padding: number }>`
   display: flex;
   flex-direction: column;
-  height: 100%;
   width: 100%;
-  overflow: auto;
   justify-content: space-between;
   padding-bottom: ${(p) => {
-    console.log("p", p);
     return p.children[0].props.padding;
   }}px;
-`;
-
-const MessageSection = styled.div`
-  display: flex;
-  flex-direction: column-reverse;
-  height: 100%;
-  width: 100%;
 `;
 
 const Message = styled.div`
@@ -42,41 +36,46 @@ export const ChatMessage = () => {
   const { params } = useRouter();
   const { userInfo } = useCurrentUser();
   const [currentMessage, setCurrentMessage] = useState("");
-  const [page, setPage] = useState(1);
-  const [inputHeight, setInputHeight] = useState(0);
-  const [totalPage, setTotalPage] = useState(1);
   const [currentChat, setCurrentChat] = useState<GroupMessage[] | []>([]);
   const inputRef = useRef<any>(null);
 
-  useEffect(() => {
-    setInputHeight(inputRef.current?.offsetHeight);
+  const { data, fetchNextPage } = useInfiniteQuery({
+    queryKey: ["group", params.id],
+    cacheTime: 0,
+    queryFn: ({ pageParam = 1 }) => {
+      return getGroupMessage({
+        groupId: params.id || "",
+        pagination: {
+          page: pageParam,
+          limit: 20,
+        },
+      });
+    },
+    getNextPageParam: (lastPage) => {
+      const totalPage = Math.ceil(lastPage.data.result.total / 20);
+      if (lastPage.data.result.currentPage === totalPage)
+        return lastPage.data.result.currentPage;
+
+      return lastPage.data.result.currentPage + 1;
+    },
+    getPreviousPageParam: (firstPage) =>
+      firstPage.data.result.currentPage - 1 ?? undefined,
+    refetchOnWindowFocus: false,
+    keepPreviousData: true,
   });
 
   useEffect(() => {
     setCurrentChat([]);
   }, [params.id]);
 
-  useQuery({
-    queryKey: ["group", params.id],
-    cacheTime: 0,
-    queryFn: () =>
-      getGroupMessage({
-        groupId: params.id || "",
-        pagination: {
-          page: page,
-          limit: 20,
-        },
-      }),
-    select: ({ data }) => {
-      return data?.result;
-    },
-    refetchOnWindowFocus: false,
-    onSuccess: (data) => {
-      const totalPage = Math.ceil(data?.total / 10);
-      setTotalPage(totalPage);
-      setCurrentChat((prev) => [...prev, ...data.data]);
-    },
-  });
+  useEffect(() => {
+    if (data?.pages.length) {
+      setCurrentChat((prev) => [
+        ...prev,
+        ...data.pages.map((item) => item.data.result.data).flat(),
+      ]);
+    }
+  }, [data?.pages.length]);
 
   const sendMessage = useMutation({
     mutationKey: ["message", params.id],
@@ -95,38 +94,62 @@ export const ChatMessage = () => {
   };
 
   useEffect(() => {
+    socket.on("connect", () => {
+      console.log("connect");
+    });
     socket.on("messages", (data) => {
+      console.log("d", data);
       if (data.message.sender !== userInfo?._id)
         setCurrentChat((prev) => [data.message, ...prev]);
     });
+
+    return () => {
+      socket.off("connect");
+      socket.off("messages");
+    };
   }, []);
 
+  const renderItem = (message) => {
+    const isSender =
+      message.sender._id === userInfo._id || message.sender === userInfo._id;
+    return (
+      <div className="flex flex-col mb-2" key={message._id}>
+        <span className={`ml-4 ${isSender ? "text-right" : "text-left"}`}>
+          {isSender ? userInfo.name : message.sender.name}
+        </span>
+        <div
+          className={`flex flex-row ${
+            isSender ? "justify-end" : "justify-start"
+          }`}
+        >
+          <div className="flex flex-col justify-end ml-2">
+            <Avatar src={message.sender.avatar} size="default" />
+          </div>
+          <Message key={message._id}>{message.content}</Message>
+        </div>
+      </div>
+    );
+  };
   return (
     <Wrapper>
-      <MessageSection padding={inputHeight}>
-        {currentChat?.map((message, index) => {
-          const isSender =
-            message.sender._id === userInfo._id ||
-            message.sender === userInfo._id;
-          return (
-            <div className="flex flex-col mb-2" key={message._id}>
-              <span className={`ml-4 ${isSender ? "text-right" : "text-left"}`}>
-                {isSender ? userInfo.name : message.sender.name}
-              </span>
-              <div
-                className={`flex flex-row ${
-                  isSender ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div className="flex flex-col justify-end ml-2">
-                  <Avatar src={message.sender.avatar} size="default" />
-                </div>
-                <Message key={message._id}>{message.content}</Message>
-              </div>
-            </div>
-          );
-        })}
-      </MessageSection>
+      {/* <MessageSection padding={60}> */}
+      <InfiniteScroll
+        next={fetchNextPage}
+        scrollThreshold={0.5}
+        hasMore
+        loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
+        dataLength={uniqBy(currentChat, "_id").length}
+        endMessage={<div>end</div>}
+        style={{
+          display: "flex",
+          flexDirection: "column-reverse",
+          paddingBottom: 60,
+        }}
+        inverse
+      >
+        {uniqBy(currentChat, "_id").map((item) => renderItem(item))}
+      </InfiniteScroll>
+      {/* </MessageSection> */}
       <div ref={inputRef} className="fixed bottom-0 w-full">
         <Input.TextArea
           autoSize={{
@@ -144,7 +167,7 @@ export const ChatMessage = () => {
             }
 
             if (e.key == "Enter" && e.shiftKey) {
-              //   e.preventDefault();
+              return;
             }
           }}
           size="large"
