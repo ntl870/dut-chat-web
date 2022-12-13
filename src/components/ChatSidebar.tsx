@@ -19,7 +19,7 @@ const ChatItem = styled.div`
   align-items: center;
   padding: 1rem;
   &:hover {
-    background-color: rgb(56, 88, 152, 0.1);
+    background-color: #385898;
     cursor: pointer;
   }
 `;
@@ -49,11 +49,19 @@ export const ChatSidebar = () => {
   return (
     <>
       <Layout.Sider
-        className="bg-white overflow-auto h-screen fixed left-0 top-0 bottom-0"
+        className="overflow-auto h-screen fixed left-0 top-0 bottom-0"
         width={300}
+        style={{ backgroundColor: "#242526" }}
       >
         <div className="flex flex-row p-4">
-          <Input placeholder="Search" className="mr-3" onChange={onSearch} />
+          <Input
+            style={{
+              backgroundColor: "#3A3B3C",
+            }}
+            placeholder="Search"
+            className="mr-3 text-gray-400 border-none placeholder-white"
+            onChange={onSearch}
+          />
           <Popover
             trigger="click"
             placement="bottom"
@@ -94,23 +102,29 @@ export const ChatSidebar = () => {
           </div>
         ) : (
           data?.map((group) => (
-            <ChatItem
-              key={group._id}
-              className={id === group._id ? "bg-slate-300" : undefined}
-              onClick={() => navigate(`/message/${group._id}`)}
-            >
-              <Avatar size={50} className="mr-4" src={group.image} />
-              <div className="flex flex-col text-white">
-                <Typography.Text className="text-black">
-                  {group.name}
-                </Typography.Text>
-                <Typography.Text className="text-0.65rem text-gray-500">{`${
-                  group.lastMessage.sender.name
-                }: ${
-                  group.lastMessage.message.content || ""
-                }`}</Typography.Text>
-              </div>
-            </ChatItem>
+            <div key={group._id}>
+              <ChatItem
+                style={{
+                  backgroundColor: id === group._id ? "#385898" : undefined,
+                  width: "90%",
+                  margin: "0 auto",
+                }}
+                className="px-6 rounded-lg"
+                onClick={() => navigate(`/message/${group._id}`)}
+              >
+                <Avatar size={50} className="mr-4" src={group.image} />
+                <div className="flex flex-col text-white">
+                  <Typography.Text className="text-white">
+                    {group.name}
+                  </Typography.Text>
+                  <Typography.Text className="text-0.65rem text-gray-300">{`${
+                    group.lastMessage.sender.name
+                  }: ${
+                    group.lastMessage.message.content || ""
+                  }`}</Typography.Text>
+                </div>
+              </ChatItem>
+            </div>
           ))
         )}
       </Layout.Sider>

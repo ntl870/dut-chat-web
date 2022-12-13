@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Avatar, Input, Skeleton, Spin } from "antd";
+import { Avatar, Input, Skeleton, Spin, Typography } from "antd";
 import { getGroupMessage, GroupMessage } from "../api/message";
 import { useRouter } from "../hooks/useRouter";
 import styled from "styled-components";
@@ -18,6 +18,12 @@ const Wrapper = styled.div`
   height: 100%;
   justify-content: flex-end;
   padding-bottom: 60px;
+  background-color: #242526;
+  padding-right: 1rem;
+  padding-left: 1rem;
+  .infinite-scroll-component__outerdiv {
+    height: 100%;
+  }
 `;
 
 const Message = styled.div`
@@ -27,7 +33,6 @@ const Message = styled.div`
   word-wrap: break-word;
   border-radius: 1.5rem;
   padding: 0.5rem;
-  background-color: #e4e6eb;
   margin-left: 0.5rem;
 `;
 
@@ -46,8 +51,12 @@ export const ChatMessage = () => {
     select: ({ data }) => data?.result,
   });
 
-  const { data, refetch } = useQuery({
-    queryKey: ["group", params.id, page],
+  const {
+    data,
+    refetch,
+    isFetching: isFetchingMessage,
+  } = useQuery({
+    queryKey: ["groupMessage", params.id, page],
     cacheTime: 0,
     queryFn: () =>
       getGroupMessage({
@@ -111,28 +120,64 @@ export const ChatMessage = () => {
       message?.sender === userInfo?._id;
     return (
       <div className="flex flex-col mb-2" key={message._id}>
-        <span className={`ml-4 ${isSender ? "text-right" : "text-left"}`}>
+        <span
+          className={`ml-4 ${isSender ? "text-right" : "text-left"}`}
+          style={{
+            color: isSender ? "white" : "rgb(209 213 219)",
+          }}
+        >
           {isSender ? userInfo?.name : message?.sender?.name}
         </span>
         <div
-          className={`flex flex-row ${
+          className={`flex flex-row z-0 ${
             isSender ? "justify-end" : "justify-start"
           }`}
         >
-          <div className="flex flex-col justify-end ml-2">
+          <div className="flex flex-col justify-end ml-2 z-0">
             <Avatar
               src={!isSender ? message.sender?.avatar : userInfo?.avatar}
               size="default"
             />
           </div>
-          <Message key={message._id}>{message.content}</Message>
+          <Message
+            key={message._id}
+            style={{
+              backgroundColor: isSender ? "rgb(59 130 246)" : "#3E4042",
+              color: "white",
+            }}
+          >
+            {message.content}
+          </Message>
         </div>
       </div>
     );
   };
 
+  if (isFetchingMessage && page === 1) {
+    return (
+      <div
+        style={{
+          backgroundColor: "#242526",
+        }}
+        className="flex justify-center h-full items-center"
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
     <Wrapper>
+      <div
+        className="w-full fixed top-0 h-10 z-50"
+        style={{
+          backgroundColor: "#242526",
+        }}
+      >
+        <Typography.Title level={2} className="text-white">
+          {groupInfo?.name}
+        </Typography.Title>
+      </div>
       <InfiniteScroll
         next={() => {
           if (page < totalPage) {
@@ -144,16 +189,22 @@ export const ChatMessage = () => {
         hasMore={totalPage !== 1 && page < totalPage}
         loader={<Skeleton paragraph={{ rows: 1 }} active />}
         dataLength={uniqBy(currentChat, "_id").length}
-        className="flex flex-col-reverse"
+        className="flex flex-col-reverse h-full z-20"
         inverse
       >
         {uniqBy(currentChat, "_id").map((item) => renderItem(item))}
       </InfiniteScroll>
+
       <div ref={inputRef} className="fixed bottom-0 w-full">
         <Input.TextArea
+          className="placeholder-white border-none"
           autoSize={{
             minRows: 1,
             maxRows: 6,
+          }}
+          style={{
+            backgroundColor: "#3A3B3C",
+            color: "white",
           }}
           value={currentMessage}
           onChange={(e) => {

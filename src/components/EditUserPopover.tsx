@@ -1,8 +1,22 @@
-import { LoadingOutlined, PlusOutlined } from "@ant-design/icons";
-import { Upload, Col, Row, Modal, Input, Form, Button, message } from "antd";
+import {
+  LoadingOutlined,
+  PlusOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import {
+  Upload,
+  Col,
+  Row,
+  Modal,
+  Input,
+  Form,
+  Button,
+  message,
+  Image,
+} from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { updateUser } from "../api/user";
-import { RcFile } from "antd/es/upload";
+import { RcFile, UploadFile } from "antd/es/upload";
 import { getDownloadURL } from "firebase/storage";
 import { useState } from "react";
 import useCurrentUser from "../hooks/useCurrentUser";
@@ -28,6 +42,7 @@ const beforeUpload = (file: RcFile) => {
 export const EditUserPopover = ({ open, onClose }: Props) => {
   const { userInfo, refetchUser } = useCurrentUser();
   const [imageLoading, setImageLoading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [form] = Form.useForm();
   const updateUserMutation = useMutation({
     mutationKey: ["updateUser"],
@@ -41,27 +56,41 @@ export const EditUserPopover = ({ open, onClose }: Props) => {
   const initialValues = {
     name: userInfo?.name || "",
     phone: userInfo?.phone || "",
-    avatar: userInfo?.avatar || "",
+    avatar: null,
+    url: userInfo?.avatar || "",
   };
-
-  const uploadButton = (
-    <div>
-      {!imageLoading ? <PlusOutlined /> : <LoadingOutlined />}
-      <div style={{ marginTop: 8 }}>Upload</div>
-    </div>
-  );
 
   return (
     <Form
       form={form}
       id="updateUserForm"
       onFinish={(value) => {
-        console.log(value);
-        try {
-          updateUserMutation.mutate({ ...value, email: userInfo?.email });
-        } catch (e) {
-          message.error((e as Error).message);
-        }
+        setImageLoading(true);
+        const uploadTask = uploadFile(
+          value.avatar.fileList[0]?.originFileObj,
+          `avatar/${value.avatar.fileList[0].name}`
+        );
+        uploadTask.on(
+          "state_changed",
+          null,
+          (error) => {
+            alert(error);
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              setImageLoading(false);
+              try {
+                updateUserMutation.mutate({
+                  ...value,
+                  email: userInfo?.email,
+                  avatar: downloadURL,
+                });
+              } catch (e) {
+                message.error((e as Error).message);
+              }
+            });
+          }
+        );
       }}
       initialValues={initialValues}
     >
@@ -89,45 +118,25 @@ export const EditUserPopover = ({ open, onClose }: Props) => {
         <Row>
           <Col span={24} className="text-center">
             <Form.Item name="avatar">
+              <Image src={form.getFieldValue("url")} />
               <Upload
-                listType="picture-card"
-                onPreview={(e) => {
-                  console.log(e);
-                }}
+                multiple={false}
                 beforeUpload={beforeUpload}
-                showUploadList={false}
+                fileList={[]}
                 onChange={(e) => {
-                  setImageLoading(true);
-                  const uploadTask = uploadFile(
-                    e.fileList[0]?.originFileObj,
-                    `avatar/${e.fileList[0].name}`
-                  );
-                  uploadTask.on(
-                    "state_changed",
-                    null,
-                    (error) => {
-                      alert(error);
-                    },
-                    () => {
-                      getDownloadURL(uploadTask.snapshot.ref).then(
-                        (downloadURL) => {
-                          setImageLoading(false);
-                          form.setFieldValue("avatar", downloadURL);
-                        }
-                      );
-                    }
-                  );
+                  const fr = new FileReader();
+                  form.setFieldValue("avatar", e);
+                  fr.readAsDataURL(e.file.originFileObj as Blob);
+                  fr.onload = () => {
+                    form.setFieldsValue({
+                      url: fr.result,
+                    });
+                  };
                 }}
               >
-                {form.getFieldValue("avatar") ? (
-                  <img
-                    src={form.getFieldValue("avatar")}
-                    alt="avatar"
-                    style={{ width: "100%" }}
-                  />
-                ) : (
-                  uploadButton
-                )}
+                <Button type="dashed" className="mt-3">
+                  <UploadOutlined /> Upload
+                </Button>
               </Upload>
             </Form.Item>
           </Col>
