@@ -4,24 +4,56 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Modal, Avatar } from "antd";
+import { Modal, Avatar, Typography, Button, message } from "antd";
 import { useState } from "react";
 import { approveJoinRequest, getGroupByID } from "../api/group";
+import {
+  addMemberToGroup,
+  getUserByEmail,
+  inviteMemberToGroup,
+} from "../api/user";
 
 interface Props {
   groupId: string;
+  onClose: () => void;
+  open: boolean;
 }
-export default function GroupModal({ groupId }: Props) {
+export default function GroupModal({ groupId, onClose, open }: Props) {
   const [visibleMembersGroup, setVisibleMembersGroup] = useState(false);
   const [visibleJoinRequest, setVisibleJoinRequest] = useState(false);
-  const [groupModelVisible, setGroupModelVisible] = useState(true);
   const [visibleAddNewSpace, setVisibleAddNewSpace] = useState(false);
+  const [inviteUserInput, setInviteUserInput] = useState("");
 
   const { data: groupInfo, refetch } = useQuery({
     queryKey: ["groupDetail", groupId],
     queryFn: () => getGroupByID(groupId || ""),
     enabled: !!groupId,
     select: ({ data }) => data?.result,
+  });
+
+  const { data: userInfoByEmail } = useQuery({
+    queryKey: ["userInfoByEmail", inviteUserInput],
+    queryFn: () => getUserByEmail({ email: inviteUserInput }),
+    enabled: !!inviteUserInput,
+    select: ({ data }) => data?.result,
+  });
+
+  const addMemberToGroupMutation = useMutation({
+    mutationKey: ["addMember"],
+    mutationFn: addMemberToGroup,
+    onSuccess: () => {
+      message.success("Add member successfully");
+      refetch();
+    },
+  });
+
+  const inviteMemberToGroupMutation = useMutation({
+    mutationKey: ["addMember"],
+    mutationFn: inviteMemberToGroup,
+    onSuccess: () => {
+      message.success("Invite member successfully");
+      refetch();
+    },
   });
 
   const approveJoinRequestGroup = useMutation({
@@ -34,12 +66,7 @@ export default function GroupModal({ groupId }: Props) {
   });
 
   return (
-    <Modal
-      title="Group Info"
-      visible={groupModelVisible}
-      onCancel={() => setGroupModelVisible(false)}
-      footer={null}
-    >
+    <Modal title="Group Info" open={open} onCancel={onClose} footer={null}>
       <div>
         <div
           style={{
@@ -84,10 +111,11 @@ export default function GroupModal({ groupId }: Props) {
 
           {visibleMembersGroup && (
             <div>
-              {groupInfo.members.map((member) => {
+              {groupInfo.members.map((member, index) => {
                 console.log(groupInfo);
                 return (
                   <div
+                    key={index}
                     style={{
                       display: "flex",
                       flexDirection: "row",
@@ -175,6 +203,7 @@ export default function GroupModal({ groupId }: Props) {
                       borderColor: "#717478",
                       width: 200,
                     }}
+                    onChange={(e) => setInviteUserInput(e.target.value)}
                     type="text"
                   />
                   <button
@@ -183,9 +212,49 @@ export default function GroupModal({ groupId }: Props) {
                       color: "#3E4042",
                       borderRadius: 20,
                     }}
+                    onClick={() => {
+                      if (userInfoByEmail) {
+                        // inviteUserToGroup({
+                        //   groupID: groupInfo._id,
+                        //   userID: userInfoByEmail._id,
+                        // });
+                        setInviteUserInput("");
+                      }
+                    }}
                   >
                     <PlusCircleOutlined />
                   </button>
+                  {userInfoByEmail?._id ? (
+                    <div>
+                      <Avatar src={userInfoByEmail.avatar} />
+                      <Typography.Text>{userInfoByEmail.name}</Typography.Text>
+                      <Button
+                        onClick={() =>
+                          addMemberToGroupMutation.mutate({
+                            groupId,
+                            email: inviteUserInput,
+                          })
+                        }
+                        icon={<PlusOutlined />}
+                      ></Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Typography.Text className="mr-2">
+                        User not found
+                      </Typography.Text>
+                      <Button
+                        onClick={() =>
+                          inviteMemberToGroupMutation.mutate({
+                            groupId,
+                            email: inviteUserInput,
+                          })
+                        }
+                      >
+                        Add this email
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -207,9 +276,10 @@ export default function GroupModal({ groupId }: Props) {
           </h2>
           {visibleJoinRequest &&
             groupInfo.joinRequests.length > 0 &&
-            groupInfo.joinRequests.map((request) => {
+            groupInfo.joinRequests.map((request, index) => {
               return (
                 <div
+                  key={index}
                   style={{
                     display: "flex",
                     flexDirection: "row",

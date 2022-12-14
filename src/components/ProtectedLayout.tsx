@@ -11,7 +11,7 @@ export const ProtectedLayout = ({ children }: ProtectedLayoutProps) => {
   return (
     <Layout className="min-h-screen">
       <ChatSidebar />
-      <Layout className="ml-300px min-h-screen overflow-auto">
+      <Layout className="ml-300px min-h-screen overflow-y-hidden">
         <Layout.Content>{children}</Layout.Content>
       </Layout>
     </Layout>

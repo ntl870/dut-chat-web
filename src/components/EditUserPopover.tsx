@@ -1,8 +1,4 @@
-import {
-  LoadingOutlined,
-  PlusOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { UploadOutlined } from "@ant-design/icons";
 import {
   Upload,
   Col,
@@ -16,7 +12,7 @@ import {
 } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { updateUser } from "../api/user";
-import { RcFile, UploadFile } from "antd/es/upload";
+import { RcFile } from "antd/es/upload";
 import { getDownloadURL } from "firebase/storage";
 import { useState } from "react";
 import useCurrentUser from "../hooks/useCurrentUser";
@@ -42,7 +38,6 @@ const beforeUpload = (file: RcFile) => {
 export const EditUserPopover = ({ open, onClose }: Props) => {
   const { userInfo, refetchUser } = useCurrentUser();
   const [imageLoading, setImageLoading] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [form] = Form.useForm();
   const updateUserMutation = useMutation({
     mutationKey: ["updateUser"],
@@ -117,27 +112,32 @@ export const EditUserPopover = ({ open, onClose }: Props) => {
       >
         <Row>
           <Col span={24} className="text-center">
-            <Form.Item name="avatar">
-              <Image src={form.getFieldValue("url")} />
-              <Upload
-                multiple={false}
-                beforeUpload={beforeUpload}
-                fileList={[]}
-                onChange={(e) => {
-                  const fr = new FileReader();
-                  form.setFieldValue("avatar", e);
-                  fr.readAsDataURL(e.file.originFileObj as Blob);
-                  fr.onload = () => {
-                    form.setFieldsValue({
-                      url: fr.result,
-                    });
-                  };
-                }}
-              >
-                <Button type="dashed" className="mt-3">
-                  <UploadOutlined /> Upload
-                </Button>
-              </Upload>
+            <Form.Item name="avatar" className="flex flex-col">
+              <div className="flex flex-col">
+                <div>
+                  <Image src={form.getFieldValue("url")} width={200} />
+                </div>
+                <Upload
+                  multiple={false}
+                  beforeUpload={beforeUpload}
+                  fileList={[]}
+                  className="h-16"
+                  onChange={(e) => {
+                    const fr = new FileReader();
+                    form.setFieldValue("avatar", e);
+                    fr.readAsDataURL(e.file.originFileObj as Blob);
+                    fr.onload = () => {
+                      form.setFieldsValue({
+                        url: fr.result,
+                      });
+                    };
+                  }}
+                >
+                  <Button type="dashed" className="mt-3">
+                    <UploadOutlined /> Upload
+                  </Button>
+                </Upload>
+              </div>
             </Form.Item>
           </Col>
           <Col span={24} className="text-center">

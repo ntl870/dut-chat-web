@@ -13,8 +13,11 @@ interface LastMessage {
     _id: string;
     content: string;
     readBy: string[];
+    type: string;
   };
+  sentAt: string;
   sender: Sender;
+  type: string;
 }
 
 interface Member {
@@ -25,7 +28,7 @@ interface Member {
   _id: string;
 }
 
-interface Group {
+export interface Group {
   _id: string;
   image: string;
   name: string;
@@ -39,7 +42,9 @@ export const getGroups = (
 ): Promise<{
   data: {
     result: {
+      currentPage: number;
       data: Group[];
+      total: number;
     };
   };
 }> => {
@@ -54,6 +59,24 @@ export const createGroup = (body: { name: string; description: string }) => {
 
 export const getGroupByID = (id: string) => {
   return axiosClient.get(`/groups/${id}`);
+};
+
+export const leaveGroup = (id: string) => {
+  return axiosClient.post(`/groups/${id}/leave-group`);
+};
+
+export const joinGroup = (id: string) => {
+  return axiosClient.post(`/groups/${id}/join-requests`);
+};
+
+export const cancelJoinGroup = ({
+  groupId,
+  requesterId,
+}: {
+  groupId: string;
+  requesterId: string;
+}) => {
+  return axiosClient.delete(`/groups/${groupId}/join-requests/${requesterId}`);
 };
 
 export const approveJoinRequest = ({

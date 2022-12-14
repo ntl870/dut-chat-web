@@ -16,7 +16,7 @@ const routes: Route[] = [
   {
     path: "/",
     label: "Dashboard",
-    element: <div>123</div>,
+    element: <div />,
     icon: <DashboardOutlined />,
   },
   {

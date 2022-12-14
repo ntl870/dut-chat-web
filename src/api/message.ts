@@ -36,11 +36,17 @@ export const getGroupMessage = ({
 export const sendGroupMessage = ({
   groupId,
   content,
+  type = "text",
+  fileName,
 }: {
   groupId: string;
   content: string;
+  type: string;
+  fileName?: string;
 }) => {
   return axiosClient.post(`/groups/${groupId}/messages`, {
     content,
+    type,
+    fileName,
   });
 };

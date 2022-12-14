@@ -1,11 +1,18 @@
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: inherit;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+html {
+  font-size: 62.5%;
 }
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+
+body {
+  box-sizing: border-box;
+  background-color: #3E4042;
+  background-color: #ffffff;
+  background-size: cover; 
 }

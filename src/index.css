@@ -16,7 +16,9 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 }
-
+.bg-success {
+  background-color: #70c040;
+}
 a {
   font-weight: 500;
   color: #646cff;

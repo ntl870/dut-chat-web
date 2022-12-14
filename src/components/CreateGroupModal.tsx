@@ -14,7 +14,7 @@ export const CreateGroupModal = ({ open, onClose, refetchGroups }: Props) => {
     mutationFn: createGroup,
     onSuccess: () => {
       onClose();
-      refetchGroups();
+      // refetchGroups();
       message.success("Group created successfully");
     },
   });
